@@ -21,27 +21,49 @@ server.listen(process.env.port || process.env.PORT || 3978, () => {
 // Listen for messages from users
 server.post('/api/messages', connector.listen());
 
-const bot = new builder.UniversalBot(connector, function(session){
-    
-    if(hasImageAttachment(session)) {
-        var stream = getImageStreamFromMessage(session.message);        
-        customVisionService.predict(stream)
-                           .then(function(response) {                                
-                                // Convert buffer into string then parse the JSON string to object
-                                var jsonObj = JSON.parse(response.toString('utf8'));     
-                                console.log(`Response: ${jsonObj}`);
-                                var topPrediction = jsonObj["Predictions"][0];                                
+const bot = new builder.UniversalBot(connector);
 
-                                // make sure we only get confidence level with 0.80 and above
-                                if(topPrediction.Probability >= 0.80) {                                    
-                                    var probability = convertToPercentWithoutRounding(topPrediction.Probability);
-                                    session.send(`Hey, I'm ${probability} sure that this is a ${topPrediction.Tag}.`);
-                                } else {
-                                    session.send('Sorry! I don\'t know what that is :(');
-                                }
-                           });
-    }
+const recognizer = new cognitiveServices.QnAMakerRecognizer({
+    knowledgeBaseId: 'bdca3e39-521e-45ef-a488-0fe59cc3aa1b',
+    subscriptionKey: 'b096ae3292f048b8a4292acf0163f138'
 });
+
+const qnaMakerDialog = new cognitiveServices.QnAMakerDialog({
+    recognizers: [recognizer],
+    defaultMessage: 'Sorry, no match found!',
+    qnaThreshold: 0.3
+});
+
+// default dialog
+bot.dialog('/', function(session){
+    session.sendTyping();
+    
+    if (hasImageAttachment(session)) {
+        var stream = getImageStreamFromMessage(session.message);
+        customVisionService.predict(stream)
+            .then(function (response) {
+                // Convert buffer into string then parse the JSON string to object
+                var jsonObj = JSON.parse(response.toString('utf8'));
+                console.log(`Response: ${jsonObj}`);
+                var topPrediction = jsonObj["Predictions"][0];
+
+                // make sure we only get confidence level with 0.80 and above
+                if (topPrediction.Probability >= 0.80) {
+                    var probability = convertToPercentWithoutRounding(topPrediction.Probability);
+                    session.send(`Hey, I'm ${probability} sure that this is a ${topPrediction.Tag}.`);
+                } else {
+                    session.send('Sorry! I don\'t know what that is :(');
+                }
+            });
+    } else {
+        session.beginDialog('qnaMaker');
+    }
+
+    // always end the dialog here to make sure we "clean" the conversation from the start
+    session.endDialog();
+});
+
+bot.dialog('qnaMaker', qnaMakerDialog);
 
 function convertToPercentWithoutRounding(number) {    
     number = number.toString();
