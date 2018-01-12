@@ -11,6 +11,7 @@
   "dependencies": {
     "botbuilder": "^3.13.1",
     "botbuilder-cognitiveservices": "^1.1.0",
+    "dotenv": "^4.0.0",
     "needle": "^2.1.0",
     "request-promise": "^4.2.2",
     "restify": "^6.3.4",
