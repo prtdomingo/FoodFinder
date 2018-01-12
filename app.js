@@ -27,7 +27,7 @@ server.post('/api/messages', connector.listen());
 const bot = new builder.UniversalBot(connector);
 
 const recognizer = new cognitiveServices.QnAMakerRecognizer({
-    knowledgeBaseId: 'bdca3e39-521e-45ef-a488-0fe59cc3aa1b',
+    knowledgeBaseId: '0d8d66a3-1d9b-4d99-bc48-0865f2e55c5c',
     subscriptionKey: 'b096ae3292f048b8a4292acf0163f138'
 });
 
