@@ -5,6 +5,7 @@ const restify = require('restify');
 const cognitiveServices = require('botbuilder-cognitiveservices');
 const customVisionService = require('./customVisionService.js');
 const utils = require('./utils.js');
+const restaurantService = require('./restaurantService.js');
 
 // Create chat connector for communicating with the Bot Framework Service
 const connector = new builder.ChatConnector({
@@ -37,7 +38,6 @@ const qnaMakerDialog = new cognitiveServices.QnAMakerDialog({
 // default dialog
 bot.dialog('/', function(session){
     session.sendTyping();
-    
     if (utils.hasImageAttachment(session)) {
         var stream = utils.getImageStreamFromMessage(session.message);
         customVisionService.predict(stream)
@@ -51,6 +51,21 @@ bot.dialog('/', function(session){
                 if (topPrediction.Probability >= 0.80) {
                     var probability = utils.convertToPercentWithoutRounding(topPrediction.Probability);
                     session.send(`Hey, I'm ${probability} sure that this is a ${topPrediction.Tag}.`);
+                    
+                    setTimeout(function () {
+                        session.send(`Let me find you restaurants that offers a ${topPrediction.Tag}`);
+                        session.sendTyping();
+
+                        setTimeout(function () {
+                            var filteredRestaurants = restaurantService.getRestaurantsList(topPrediction.Tag);
+                            var message = new builder.Message()
+                                .attachmentLayout(builder.AttachmentLayout.carousel)
+                                .attachments(filteredRestaurants.map(restaurantService.restaurantAsAttachment));
+
+                            session.send(message);
+                        }, 2000);
+                    }, 1000);
+
                 } else {
                     session.send('Sorry! I don\'t know what that is :(');
                 }
